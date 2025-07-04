@@ -4,13 +4,55 @@ import time
 from datetime import datetime
 import subprocess
 import socket
-import time
 import webbrowser
 import threading
 import os
 import sys  
 
+class datas:
+   def __init__(self, hoje=None, dia=None, semana=None, mes=None, ano=None):
+        self.hoje = hoje
+        self.dia = dia
+        self.semana = semana
+        self.mes = mes
+        self.ano = ano
 
+   def set_datas(self):
+        agora = datetime.now()
+        self.hoje = agora.strftime("%d/%m/%Y")
+        self.dia = agora.date()  # Guarda um objeto date ao invés de string
+        self.semana = agora.isocalendar().week
+        self.mes = agora.strftime("%m")
+        self.ano = agora.strftime("%Y")
+
+class filtros:
+    def __init__(self, data=None, plataforma=None, tipo=None):
+        self.data = data
+        self.plataforma = plataforma
+        self.tipo = tipo
+
+    def selecionar_filtros(self):
+        self.data = st.selectbox("Qual o Filtro?",
+                                   ["Dia", "Semana", "Mês", "Ano"],
+                                   index=None,
+                                   placeholder="Escolha uma Opção"
+                                   )
+        
+        self.plataforma = st.selectbox(
+            "Qual a plataforma?",
+            sheets_existentes,
+            index=None,
+            placeholder="Plataforma"
+            )
+        
+        self.tipo = st.selectbox(
+            "Escolha uma opção:",
+            [ "Buy in", "Saldo"],
+            index=None,
+            placeholder="Escolha uma opção"
+            )
+
+    
 def porta_ja_em_uso(porta):
     """Verifica se a porta já está ocupada."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -29,7 +71,7 @@ def esperar_e_abrir(url, porta, timeout=15):
             time.sleep(0.5)
 
 # Função de animação de carregamento
-def animacao():
+def animacao_de_upload():
     placeholder = st.empty()
     placeholder.markdown("""
     <style>
@@ -71,7 +113,7 @@ def animacao():
     placeholder.empty()
 
 # Função de layout da aplicação
-def layout():
+def exibir_tela_inicial():
   # Titulo
   st.title("Poker Tracker: Ganhos e Perdas 🃏")
 
@@ -79,39 +121,17 @@ def layout():
   st.header("♣️♥️♠️♦️")
 
   #SubCabeçalho
-  st.subheader("A jogadora...")
+  st.subheader("O jogo...")
 
 
   # Colocando as infomações de Marina.
   st.markdown("""
-                  Marina Milleny Silva, nascida em Campinas (SP) no ano de 1999, chegou ao mundo exatamente ao meio-dia no hospital Mário Gatti, curiosamente, o mesmo horário em que costuma acordar hoje em dia.
+                O "jogo do bicho", hoje conhecido como poker, é uma atividade que envolve estratégia, riscos e muita determinação. Desde o seu surgimento, esse jogo desperta grandes desafios e promete aventuras no universo das cartas.
 
-                  Desde cedo, ela nutre o sonho ousado de se tornar uma jogadora profissional do lendário "jogo do bicho", ou como é mais conhecido atualmente, o poker. É essa paixão pelas cartas que alimenta sua determinação todos os dias.
+                O caminho dentro do jogo é cheio de obstáculos a serem superados, exigindo habilidade para dominar suas complexidades.
 
-                  Marina sabe que enfrentará muitos desafios e aventuras nessa jornada. Mas será que ela conseguirá superar os obstáculos e dominar o sombrio universo do jogo?
-
-                  A seguir, um gráfico com seus ganhos e perdas. Veja por si mesmo: Marina está vencendo o jogo... ou sendo vencida por ele?
+                A seguir, um gráfico apresenta os ganhos e perdas relacionados a essa atividade. O resultado: o jogo está sendo vencido… ou está vencendo?
               """)
-  
-# Função para filtrar a data atual e retornar informações relevantes
-def filtro_data():
-    agora = datetime.now()
-    dia = agora.strftime("%d/%m/%Y")
-    mes = agora.strftime("%m")
-    semana = agora.isocalendar().week  
-    ano = agora.year
-
-    inicio_semana = datetime.fromisocalendar(ano, semana, 1).strftime("%d/%m/%Y")
-    fim_semana = datetime.fromisocalendar(ano, semana, 7).strftime("%d/%m/%Y")
-
-    return [
-        dia,       # 0
-        semana,    # 1
-        mes,       # 2
-        str(ano),  # 3
-        inicio_semana,  # 4
-        fim_semana      # 5
-    ]
 
 # Dicionário de tradução 
 dias_pt = {
@@ -124,9 +144,8 @@ dias_pt = {
     "Sunday": "Domingo"
 }
 
-
 # Inicio do processo.
-layout()
+exibir_tela_inicial()
 
 # Variável para controlar o carregamento.
 if "df_processado" not in st.session_state:
@@ -142,7 +161,7 @@ upload = st.file_uploader(
 
 # Só executa animação e leitura se ainda não processou.
 if upload is not None and not st.session_state.df_processado:
-    animacao()
+    animacao_de_upload()
     st.session_state.df = pd.read_excel(upload)
     st.session_state.df_processado = True
 
@@ -150,37 +169,27 @@ if upload is not None and not st.session_state.df_processado:
 if st.session_state.df_processado:
     df = st.session_state.df
 
-    sheet = st.selectbox(
-        "Qual a plataforma?",
-        ["Poker Suprema", "Poker PokerStars", "Coin Poker"],
-        index=None,
-        placeholder="Plataforma"
-        )
-    
-    opcao = st.selectbox(
-        "Escolha uma opção:",
-        [ "Buy in", "Saldo"],
-        index=None,
-        placeholder="Escolha uma opção"
-    )
+    # lista dos sheets existentes
+    sheets_existentes = pd.ExcelFile(upload).sheet_names
+
+    filtros = filtros()
+    filtros.selecionar_filtros()
+
+    f = datas()
+    f.set_datas()
 
     filtro = st.radio("Você deseja fazer filtro? [Dia/Semana/Mês/Ano]",
          ["Sim", "Não"],
          index=None)
     
-    mes = ["Janeiro", "Feveiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+    mes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+
+    # Cria um df do arquivo .xlsx
+    df = pd.read_excel(upload, sheet_name=filtros.plataforma)
 
     # Verifica se o filtro foi selecionado e mostra as opções de filtro.
-    if filtro == "Sim":
-        df = pd.read_excel(upload, sheet_name=sheet)
-        
-        qual_filtro = st.selectbox("Qual o Filtro?",
-                                   ["Dia", "Semana", "Mês", "Ano"],
-                                   index=None,
-                                   placeholder="Escolha uma Opção"
-                                   )
-        
-        if qual_filtro == "Dia":
+    if filtro == "Sim":        
+        if filtros.data == "Dia":
             # Tenta encontrar a coluna de data automaticamente
             col_data = None
             for col in df.columns:
@@ -206,11 +215,11 @@ if st.session_state.df_processado:
                         df_hoje = df_hoje[df_hoje["Tipo"] == tipo_escolhido]
 
                     if not df_hoje.empty:
-                        if opcao in df_hoje.columns:
-                            st.write(f"{opcao} - Hoje ({hoje.strftime('%d/%m/%Y')}) - Tipo: {tipo_escolhido}")
-                            st.line_chart(df_hoje[opcao])
+                        if filtros.tipo in df_hoje.columns:
+                            st.write(f"{filtros.tipo} - Hoje ({datas.hoje}) - Tipo: {tipo_escolhido}")
+                            st.line_chart(df_hoje[filtros.tipo])
                         else:
-                            st.warning(f"A coluna '{opcao}' não foi encontrada no arquivo.")
+                            st.warning(f"A coluna '{filtros.tipo}' não foi encontrada no arquivo.")
                     else:
                         st.warning(f"Nenhum dado encontrado para o tipo selecionado na data de hoje.")
                 else:
@@ -219,24 +228,19 @@ if st.session_state.df_processado:
                 st.error("Nenhuma coluna com nome parecido com 'Data' foi encontrada.")
 
 
-        elif qual_filtro == "Semana":
-            info = filtro_data()
-            semana = info[1]
-            ano = int(info[3])
-            hoje = datetime.now().date()
-
-            dias_semana = [datetime.fromisocalendar(ano, semana, i) for i in range(1, 8)]
+        elif filtros.data == "Semana":
+            f = datas()
+            f.set_datas()
+            dias_semana = [datetime.fromisocalendar(int(f.ano), int(f.semana), i).date() for i in range(1, 8)]
+            # filtra dias até o dia atual (inclusive)
             dias_passados = [
                 f"{dias_pt[d.strftime('%A')]} - {d.strftime('%d/%m/%Y')}"
-                for d in dias_semana if d.date() <= hoje
+                for d in dias_semana if d <= f.dia
             ]
-
             if dias_passados:
                 dia_escolhido = st.selectbox("Escolha um dia da semana atual:", dias_passados, index=None, placeholder="Escolha o dia")
             else:
                 st.error("Nenhum dia da semana atual disponível.")
-                
-            df = pd.read_excel(upload, sheet_name=sheet)
 
             # Garante que a coluna "Data" esteja em datetime
             df["Data"] = pd.to_datetime(df["Data"], errors="coerce")
@@ -261,7 +265,7 @@ if st.session_state.df_processado:
                     
                     # Exibe o gráfico com as linhas da data escolhida
                     if not df_filtrado.empty:
-                        if opcao == "Saldo":
+                        if filtros.tipo == "Saldo":
                             dados = df_filtrado["Saldo"]
                             dados = dados.dropna()
                             dados = dados[dados != 0]
@@ -271,7 +275,7 @@ if st.session_state.df_processado:
                             else:
                                 st.warning("Não há valores de Saldo para mostrar.")
 
-                        elif opcao == "Buy in":
+                        elif filtros.tipo == "Buy in":
                             dados = df_filtrado["Buy in"]
                             dados = dados.dropna()
                             dados = dados[dados != 0]
@@ -284,18 +288,15 @@ if st.session_state.df_processado:
                         st.warning("Nenhum dado encontrado para o dia escolhido.")
     
 
-        elif qual_filtro == "Mês":
-            mes = st.selectbox("Escolha o Mês:", [
-                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-            ])
+        elif filtros.data == "Mês":
+            escolher_mes = st.selectbox("Escolha o Mês:", mes)
 
             mes_dict = {
                 "Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4,
                 "Maio": 5, "Junho": 6, "Julho": 7, "Agosto": 8,
                 "Setembro": 9, "Outubro": 10, "Novembro": 11, "Dezembro": 12
             }
-            mes_num = mes_dict[mes]  # mês escolhido
+            mes_num = mes_dict[escolher_mes]  # mês escolhido
             ano_atual = datetime.now().year  # pega ano atual
 
             if "Data" in df.columns:
@@ -316,7 +317,7 @@ if st.session_state.df_processado:
                         df_filtrado = df_filtrado[df_filtrado["Tipo"] == tipo_escolhido]
 
                     if not df_filtrado.empty:
-                        if opcao == "Saldo":
+                        if filtros.tipo == "Saldo":
                             dados = df_filtrado["Saldo"]
                             dados = dados.dropna()
                             dados = dados[dados != 0]
@@ -326,7 +327,7 @@ if st.session_state.df_processado:
                             else:
                                 st.warning("Não há valores de Saldo para mostrar.")
 
-                        elif opcao == "Buy in":
+                        elif filtros.tipo == "Buy in":
                             dados = df_filtrado["Buy in"]
                             dados = dados.dropna()
                             dados = dados[dados != 0]
@@ -340,7 +341,7 @@ if st.session_state.df_processado:
             else:
                 st.error("Coluna 'Data' não encontrada no arquivo.")
 
-        elif qual_filtro == "Ano":
+        elif filtros.data == "Ano":
             # Garante que a coluna 'Data' existe e está no formato datetime
             if "Data" in df.columns:
                 df["Data"] = pd.to_datetime(df["Data"], errors="coerce")
@@ -364,7 +365,7 @@ if st.session_state.df_processado:
                             df_filtrado = df_filtrado[df_filtrado["Tipo"] == tipo_escolhido]
 
                     if not df_filtrado.empty:
-                        if opcao == "Saldo":
+                        if filtros.tipo == "Saldo":
                             dados = df_filtrado["Saldo"]
                             dados = dados.dropna()
                             dados = dados[dados != 0]
@@ -374,7 +375,7 @@ if st.session_state.df_processado:
                             else:
                                 st.warning("Não há valores de Saldo para mostrar.")
 
-                        elif opcao == "Buy in":
+                        elif filtros.tipo == "Buy in":
                             dados = df_filtrado["Buy in"]
                             dados = dados.dropna()
                             dados = dados[dados != 0]
@@ -392,22 +393,20 @@ if st.session_state.df_processado:
 
     # Se Não deixa
     elif filtro != None and filtro == "Não":
-        if opcao == None:
+        if filtros.tipo == None:
             pass
         else:
-            st.write(f"Você selecionou: {opcao}")
+            st.write(f"Você selecionou: {filtros.tipo}")
             
 
-        if opcao == "Saldo":
+        if filtros.tipo == "Saldo":
             st.write("Gráfico de Saldo Geral")
-            df = pd.read_excel(upload, sheet_name=sheet)
             if df is not None and "Saldo" in df.columns:
                 df_saldo = df["Saldo"]
                 st.line_chart(df_saldo)
 
-        elif opcao == "Buy in":
+        elif filtros.tipo == "Buy in":
             st.write("Gráfico de Buy in Geral")
-            df = pd.read_excel(upload, sheet_name=sheet)
             if df is not None and "Buy in" in df.columns:
                 df_buy = df["Buy in"]
                 st.line_chart(df_buy)
